@@ -163,6 +163,7 @@ class SosSpecs(Specs):
     ovirt_engine_confd = glob_file("/etc/ovirt-engine/engine.conf.d/*")
     ovirt_engine_console_log = simple_file("/var/log/ovirt-engine/console.log")
     ovs_vsctl_show = simple_file("sos_commands/openvswitch/ovs-vsctl_-t_5_show")
+    ovs_ofctl_dump_flows = glob_file("/sos_commands/openvswitch/ovs-ofctl_dump-flows*")
     pam_conf = simple_file("/etc/pam.conf")
     partitions = simple_file("/proc/partitions")
     pcs_config = simple_file("sos_commands/pacemaker/pcs_config")
