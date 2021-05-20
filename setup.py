@@ -35,6 +35,7 @@ runtime = set([
     'defusedxml',
     'lockfile',
     'jinja2<=2.11.3',
+    'ipykernel',
 ])
 
 if (sys.version_info < (2, 7)):
