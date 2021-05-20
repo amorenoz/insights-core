@@ -660,3 +660,108 @@ class _make_skip(Response):
                                         rule_fqdn=rule_fqdn,
                                         reason="MISSING_REQUIREMENTS",
                                         details=details)
+
+
+class command(PluginType):
+    """
+    Decorates a component that can be called with arbitrary parameters
+    that are set dynamically using set_params. Commands can depend on other
+    :class:`parser`, :class:`combiner`, etc, just like any other plugin
+
+    An extra dependency to a :class `Parameter` instance is automatically
+    injected. Therefore, the component must accept an extra argument to hold
+    it.
+
+    The command will then be searchable by name. The name of the command will
+    be set to the name of the component being decorated.
+
+    For example:
+
+    .. code-block:: python
+
+       @command(InstalledRpms)
+       def find_package(rpms, param):
+           # ...
+           # ... some complicated logic
+           # ...
+           bash = installed_rpms.newest("bash")
+           return { "result": rpms.newest(param.params['rpm']) }
+
+    """
+    def __init__(self, *args, **kwargs):
+        self.name = kwargs.get('name')
+        self.context = kwargs.get('context') or FSRoots
+        print("context of command is {}", self.context)
+        # Create a command args
+        self.params = command_args(self.context)
+        deps = list(args)
+        deps.append(self.params)
+        super(command, self).__init__(*deps, **kwargs)
+
+    def __call__(self, component):
+        """
+        Called with the decorated object
+        If name was not provided in the constructor, pick the name of the
+        component
+        """
+        if not self.name:
+            self.name = component.__name__
+
+        return super(command, self).__call__(component)
+
+    def set_params(self, **kwargs):
+        """
+        Set the command parameters. This has to be done prior to invoke()
+        or the component will skip
+        """
+        self.params.set(**kwargs)
+
+    def invoke(self, broker):
+        params = self.params(broker)
+        if not params:
+            raise dr.SkipComponent()
+
+        try:
+            return super(command, self).invoke(broker)
+        except ContentException as ce:
+            log.debug(ce)
+            broker.add_exception(self.component, ce, traceback.format_exc())
+            raise dr.SkipComponent()
+        except CalledProcessError as cpe:
+            log.debug(cpe)
+            broker.add_exception(self.component, cpe, traceback.format_exc())
+            raise dr.SkipComponent()
+
+from insights.core.context import HostContext, FSRoots
+class command_args(object):
+    def __init__(self, context=None):
+        self.context = context or FSRoots
+        self.params = {}
+        self.__name__ = self.__class__.__name__
+        datasource(context=self.context)(self)
+
+    def set(self, **kwargs):
+        self.params = kwargs
+
+    def __call__(self, broker):
+        if not self.params:
+            raise dr.SkipComponent()
+        return Parameter(self.params)
+
+class Parameter(object):
+    """
+    Parameters are components used to inject dynamic parameters to other
+    components
+    """
+    def __init__(self, params):
+        self._params = params
+
+    @property
+    def params(self):
+        """
+        Returns parameter data
+        """
+        return self._params
+
+    def __repr__(self):
+        return '{}({})'.format(self.__class__.__name__, self.params)
