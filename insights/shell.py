@@ -291,6 +291,30 @@ class Models(dict):
                 print("{} chose to skip.".format(dr.get_name(comp)))
         return val
 
+    def run_command(self, name, **kwargs):
+        command = None
+        for cmd in dr.get_components_of_type(plugins.command):
+            if dr.get_delegate(command).name == name:
+                command = cmd
+                break
+
+        if not command:
+            print("Command not found")
+            return None
+
+        ## Remove command and its parameters from broker so it is reprocessed
+        params = dr.get_delegate(command).params
+        del self._broker[params]
+        del self._broker[command]
+
+        # Set the new parameters and run
+        params.set(**kwargs)
+        return dr.run(command, broker=self._broker).get(command)
+
+    def get_commands(self):
+        return {dr.get_delegate(cmd).name: cmd for cmd in
+                dr.get_components_of_type(plugins.command)}
+
     def __getattr__(self, name):
         return self.evaluate(name)
 
