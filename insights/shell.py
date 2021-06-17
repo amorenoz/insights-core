@@ -189,6 +189,9 @@ class Models(dict):
         self._cov = cov
         super(Models, self).__init__(models)
 
+    def path(self):
+        return self._tmp
+
     def __dir__(self):
         """ Enabled ipython autocomplete. """
         return sorted(set(list(self.keys()) + dir(Models)))
